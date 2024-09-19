@@ -2,46 +2,39 @@
 
 ## 1. System Architecture
 
-The Apollo.io AI Support Bot is built using a modern, scalable architecture designed to provide efficient and responsive user interactions. The various system components are now in a monolith application for the POC, but can be easily distributed for scale. Here's an overview of the system components:
+The Apollo.io AI Support Bot is built using a modern, scalable architecture designed to provide efficient and responsive user interactions. The various system components are now in a monolith application for the POC but can be easily distributed for scale. Here's an overview of the system components:
 
 ### Components:
 
 1. **Next.js Frontend**:
 
-   - Chat Interface:
-     - Allow user to interact
-   - State Management:
-     - Manages local chat history, handles UI state (loading, error states)
-   - SSE Client:
-     - Establishes and maintains SSE connection, processes incoming streamed responses
+   - **Chat Interface**: Allows user interaction.
+   - **State Management**: Manages local chat history and UI states (loading, error).
+   - **SSE Client**: Establishes and maintains SSE connection, processes incoming streamed responses.
 
 2. **API Route (Server)**:
 
-   - Request Handler:
-     - Parses incoming requests, validates input data
-   - Session Manager:
-     - Manages user sessions, handles conversation context
-   - AI Service Interface:
-     - Communicates with AI Service, formats data for AI processing
-   - Response Streamer:
-     - Implements SSE for real-time responses, manages connection lifecycle
+   - **Request Handler**: Parses incoming requests, validates input data.
+   - **Session Manager**: Manages user sessions, handles conversation context.
+   - **AI Service Interface**: Communicates with AI Service, formats data for AI processing.
+   - **Response Streamer**: Implements SSE for real-time responses, manages connection lifecycle.
+   - **Feedback API**: Collects user feedback on responses, including relevance scores.
 
 3. **AI Service**:
 
-   - OpenAI Integration:
-     - Formats prompts for OpenAI model
-   - Context Manager:
-     - Maintains conversation context, applies context-aware processing possible because of singleton pattern
+   - **OpenAI Integration**: Formats prompts for OpenAI model.
+   - **Context Manager**: Maintains conversation context, applies context-aware processing.
 
 4. **Knowledge Base Service**:
-   - Data Storage:
-     - Manages knowledgebase and other data
-   - Search Engine:
-     - Implements efficient search algorithms, ranks and retrieves relevant information
-   - Data Preprocessor:
-     - Cleans and formats raw data, generates searchable indices
-   - Caching Layer:
-     - Implements in-memory caching for frequent queries
+
+   - **Data Storage**: Manages knowledge base and other data.
+   - **Search Engine**: Implements efficient search algorithms, ranks and retrieves relevant information.
+   - **Data Preprocessor**: Cleans and formats raw data, generates searchable indices.
+   - **Caching Layer**: Implements in-memory caching for frequent queries.
+
+5. **Evaluation Service**:
+   - **Functionality**: Collects user feedback on bot responses, allowing for continuous improvement.
+   - **Relevance Score**: A numerical score assigned to each response based on user feedback, used to adjust response generation algorithms.
 
 ![System components](./resources/design.png "System components")
 
@@ -57,6 +50,7 @@ The data flow from user input to bot response follows these steps:
 6. OpenAI processes the query and generates a response.
 7. Response is streamed back through the API Route to the Frontend.
 8. Frontend updates the UI in real-time with the streamed response.
+9. User provides feedback on the response, which is sent to the Evaluation Service for processing.
 
 ![Sequence diagram](./resources/sequence.png "Sequence diagram for the request and response")
 
@@ -96,9 +90,11 @@ Our technology stack is chosen for its robustness, scalability, and developer-fr
 
 The main API endpoint for interacting with the bot is:
 
-POST /api/chat
+### Chat API
 
-### Request Body:
+**POST /api/chat**
+
+#### Request Body:
 
 ```json
 {
@@ -110,16 +106,54 @@ POST /api/chat
 }
 ```
 
-### Response:
+#### Response:
 
 The API uses Server-Sent Events (SSE) to stream the response in real-time.
 
 ```json
 #event: message
-{data: {"content": "Partial response content"}}
+{
+  "content": "Partial response content"
+}
 #event: message
-{data: {"content": "More response content"}}
+{
+  "content": "More response content"
+}
+#event: metrics
+{
+  "metrics": {
+    "responseTime":1868,
+    "responseLength":519,
+    "relevanceScore":66.66666666666666
+  },
+  "id":"7bab4468-dbbe-4998-b622-95750d8aee2d"
+}
 $event: done
+```
+
+### Feedback API
+
+**POST /api/feedback**
+
+#### Request Body:
+
+```json
+{
+  "messageId": "1726765568654",
+  "feedback": "down"
+}
+```
+
+#### Response:
+
+```json
+{
+  "success": true,
+  "feedback": {
+    "thumbsUp": 0,
+    "thumbsDown": 1
+  }
+}
 ```
 
 ## 5. Error Handling Scenarios
